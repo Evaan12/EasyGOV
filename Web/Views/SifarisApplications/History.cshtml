@@ -1,0 +1,79 @@
+@model Application.Common.Pagination.PagedResult<Domain.Entities.SifarisApplication>
+@{
+    ViewData["Title"] = "Historic Sifaris Applications";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold mb-0 text-dark"><i class="bi bi-clock-history me-2 text-primary"></i>Historic Sifaris Applications</h3>
+    <a asp-action="Index" class="btn btn-outline-dark fw-bold rounded-0"><i class="bi bi-arrow-left me-2"></i>Back to Pending</a>
+</div>
+
+<div class="card border-dark shadow-sm rounded-0">
+    <div class="card-body bg-light border-bottom p-3">
+        <form method="get" class="row g-2">
+            <div class="col-md-4">
+                <input type="text" name="SearchTerm" class="form-control fw-bold border-dark rounded-0" placeholder="Search by Application ID..." value="@Context.Request.Query["SearchTerm"]" />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-dark w-100 fw-bold rounded-0 border-dark"><i class="bi bi-search me-1"></i> Search</button>
+            </div>
+        </form>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover table-bordered border-dark align-middle mb-0">
+            <thead class="table-dark text-uppercase small">
+                <tr>
+                    <th class="px-4 py-3 border-dark">Application ID</th>
+                    <th class="px-4 py-3 border-dark">Date Submitted</th>
+                    <th class="px-4 py-3 border-dark text-center">Status</th>
+                    <th class="px-4 py-3 border-dark">Review Notes</th>
+                    <th class="px-4 py-3 border-dark text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Items.Any())
+                {
+                    foreach (var app in Model.Items)
+                    {
+                        <tr>
+                            <td class="px-4 py-3 fw-bold border-dark font-monospace text-muted">@app.Id.ToString().Substring(0,8)</td>
+                            <td class="px-4 py-3 border-dark">@app.CreatedAt.ToString("MMM dd, yyyy HH:mm")</td>
+                            <td class="px-4 py-3 border-dark text-center">
+                                @if (app.Status == Domain.Enums.ApplicationStatus.Approved)
+                                {
+                                    <span class="badge bg-success text-white border border-success rounded-0">APPROVED</span>
+                                }
+                                else if (app.Status == Domain.Enums.ApplicationStatus.Rejected)
+                                {
+                                    <span class="badge bg-danger text-white border border-danger rounded-0">REJECTED</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary text-white border border-secondary rounded-0">@app.Status.ToString().ToUpper()</span>
+                                }
+                            </td>
+                            <td class="px-4 py-3 border-dark small">@app.ReviewNotes</td>
+                            <td class="px-4 py-3 border-dark text-center">
+                                <a asp-action="Review" asp-route-id="@app.Id" class="btn btn-sm btn-outline-dark fw-bold rounded-0" title="View Application Details"><i class="bi bi-eye"></i></a>
+                                @if (app.Status == Domain.Enums.ApplicationStatus.Approved)
+                                {
+                                    <a asp-action="ViewDocument" asp-route-applicationId="@app.Id" class="btn btn-sm btn-success fw-bold rounded-0 ms-1" title="View Issued Sifaris"><i class="bi bi-award"></i></a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="5" class="text-center text-muted py-4 fw-bold">No historic applications found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    @if(Model.TotalPages > 1)
+    {
+        <div class="card-footer bg-white border-top border-dark pt-3">
+            <pager paged-result="Model"></pager>
+        </div>
+    }
+</div>

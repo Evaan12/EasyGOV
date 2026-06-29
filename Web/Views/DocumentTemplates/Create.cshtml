@@ -1,0 +1,193 @@
+@{
+    ViewData["Title"] = "Add Sifaris Template";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card border-dark rounded-0 shadow-sm border-top border-4 border-primary mt-4">
+            <div class="card-header bg-dark text-white rounded-0 py-3">
+                <h5 class="fw-bold mb-0"><i class="bi bi-file-earmark-plus me-2"></i>Add New Sifaris Template</h5>
+            </div>
+            <div class="card-body p-4 bg-light">
+                <div class="alert alert-warning border-dark rounded-0 shadow-sm fw-bold small mb-4">
+                    <i class="bi bi-magic me-2"></i> Easily create custom Sifaris templates! Use the toolbar to insert Citizen details. The system will automatically build the application forms.
+                </div>
+
+                <form asp-action="Create" method="post" id="templateForm">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold text-dark text-uppercase small">Template Name</label>
+                            <input type="text" name="name" class="form-control rounded-0 border-dark" placeholder="e.g. नागरिकता सिफारिस" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark text-uppercase small">Template Type</label>
+                            <select name="type" id="templateTypeSelect" class="form-select rounded-0 border-dark" asp-items="Html.GetEnumSelectList<Domain.Enums.TemplateType>()" required>
+                                <option value="">-- Select Type --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-12 mt-3" id="linkedTemplateDiv" style="display: none;">
+                            <label class="form-label fw-bold text-dark text-uppercase small">Linked Nibedan Template</label>
+                            <select name="linkedTemplateId" class="form-select rounded-0 border-dark" asp-items="ViewBag.NibedanTemplates">
+                                <option value="">-- Select Linked Nibedan --</option>
+                            </select>
+                            <div class="form-text small">Select the mandatory Application form the citizen must fill out to get this certificate.</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-dark text-uppercase small">Description</label>
+                        <input type="text" name="description" class="form-control rounded-0 border-dark" placeholder="Short description of the template purpose" required />
+                    </div>
+
+                    <input type="hidden" name="formSchemaJson" id="formSchemaJsonHidden" />
+                    <input type="hidden" name="htmlContent" id="htmlContentHidden" />
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-dark text-uppercase small mb-2">Document Layout Editor</label>
+
+                        <div class="custom-editor-toolbar bg-white border border-dark border-bottom-0 p-2 d-flex gap-2 flex-wrap align-items-center shadow-sm">
+                            <button type="button" class="btn btn-sm btn-outline-dark fw-bold rounded-0" onclick="formatDoc('bold')" title="Bold">B</button>
+                            <button type="button" class="btn btn-sm btn-outline-dark fst-italic rounded-0" onclick="formatDoc('italic')" title="Italic">I</button>
+                            <button type="button" class="btn btn-sm btn-outline-dark text-decoration-underline rounded-0" onclick="formatDoc('underline')" title="Underline">U</button>
+
+                            <span class="border-start border-dark mx-1 h-100 d-inline-block" style="min-height: 24px;"></span>
+
+                            <button type="button" class="btn btn-sm btn-outline-dark rounded-0" onclick="formatDoc('justifyLeft')" title="Align Left"><i class="bi bi-text-left"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-dark rounded-0" onclick="formatDoc('justifyCenter')" title="Align Center"><i class="bi bi-text-center"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-dark rounded-0" onclick="formatDoc('justifyRight')" title="Align Right"><i class="bi bi-text-right"></i></button>
+
+                            <span class="border-start border-dark mx-1 h-100 d-inline-block" style="min-height: 24px;"></span>
+
+                            <div class="input-group input-group-sm w-auto">
+                                <select class="form-select border-dark rounded-0 fw-bold" id="insertVariableSelect">
+                                    <option value="">-- Insert Citizen Data --</option>
+                                    <option value="{{citizen.fullname}}">Full Name</option>
+                                    <option value="{{citizen.citizenshipnumber}}">Citizenship No.</option>
+                                    <option value="{{citizen.dob}}">Date of Birth</option>
+                                    <option value="{{citizen.gender}}">Gender</option>
+                                    <option value="{{citizen.mobilenumber}}">Mobile No.</option>
+                                </select>
+                                <button type="button" class="btn btn-success fw-bold rounded-0" onclick="insertVariable()"><i class="bi bi-plus-circle me-1"></i>Insert</button>
+                            </div>
+
+                            <button type="button" class="btn btn-sm btn-warning fw-bold rounded-0 border-dark ms-2" onclick="insertCustomField()"><i class="bi bi-input-cursor-text me-1"></i>+ Custom Input Field</button>
+
+                            <button type="button" class="btn btn-sm btn-info fw-bold rounded-0 border-dark ms-auto" onclick="loadSample()"><i class="bi bi-file-earmark-medical me-1"></i>Load Standard Letterhead</button>
+                        </div>
+
+                        <div id="customEditor" contenteditable="true" class="form-control rounded-0 border-dark bg-white" style="min-height: 400px; max-height: 600px; overflow-y: auto; font-family: serif; font-size: 1.1rem; padding: 2rem;">
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4 border-top border-dark pt-4">
+                        <a asp-action="Index" class="btn btn-outline-dark fw-bold rounded-0 px-4 shadow-sm">Cancel</a>
+                        <button type="submit" class="btn btn-primary fw-bold rounded-0 px-5 shadow-sm">Save Template & Auto-Generate Forms</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+              document.getElementById('templateTypeSelect').addEventListener('change', function() {
+                  if (this.value == '2') {
+                      document.getElementById('linkedTemplateDiv').style.display = 'block';
+                  } else {
+                      document.getElementById('linkedTemplateDiv').style.display = 'none';
+                  }
+              });
+
+              function formatDoc(cmd, value=null) {
+                  document.execCommand(cmd, false, value);
+                  document.getElementById('customEditor').focus();
+              }
+
+              function insertVariable() {
+                  const select = document.getElementById('insertVariableSelect');
+                  if (select.value) {
+                      const html = `<span style="background-color: #e9ecef; border: 1px solid #ced4da; padding: 0 4px; border-radius: 3px;" contenteditable="false">${select.value}</span>&nbsp;`;
+                      document.execCommand('insertHTML', false, html);
+                      select.value = '';
+                  }
+                  document.getElementById('customEditor').focus();
+              }
+
+              function insertCustomField() {
+                  let fieldName = prompt("Enter a name for the custom input field (e.g., IssueDistrict, FatherName, ApplicationPurpose):");
+                  if (fieldName) {
+                      const cleanName = fieldName.replace(/[^a-zA-Z0-9_]/g, '');
+                      if (cleanName) {
+                          const html = `<span style="background-color: #fff3cd; border: 1px solid #ffecb5; padding: 0 4px; border-radius: 3px;" contenteditable="false">{{${cleanName}}}</span>&nbsp;`;
+                          document.execCommand('insertHTML', false, html);
+                      }
+                  }
+                  document.getElementById('customEditor').focus();
+              }
+
+              function loadSample() {
+                  const sampleHtml = `
+        <div style="border: 2px solid #000; padding: 40px; position: relative;">
+            <h2 style="text-align: center; color: #b30000; margin-bottom: 5px;">नेपाल सरकार</h2>
+            <h3 style="text-align: center; margin-top: 0;">स्थानीय सरकार</h3>
+            <hr style="border-top: 2px solid #000;" />
+            <h3 style="text-align: center; text-decoration: underline; margin-top: 20px; margin-bottom: 30px;">सिफारिस पत्र</h3>
+
+            <p style="line-height: 2;">
+                श्री <span style="background-color: #fff3cd; border: 1px solid #ffecb5; padding: 0 4px; border-radius: 3px;" contenteditable="false">{{TargetAuthority}}</span> ज्यु,<br/>
+                <span style="background-color: #fff3cd; border: 1px solid #ffecb5; padding: 0 4px; border-radius: 3px;" contenteditable="false">{{TargetAddress}}</span>।
+            </p>
+
+            <p style="line-height: 2; text-indent: 40px; text-align: justify;">
+                प्रस्तुत विषयमा यस वडामा स्थायी बसोबास गर्ने श्री <span style="background-color: #e9ecef; border: 1px solid #ced4da; padding: 0 4px; border-radius: 3px;" contenteditable="false">{{citizen.fullname}}</span> लाई <span style="background-color: #fff3cd; border: 1px solid #ffecb5; padding: 0 4px; border-radius: 3px;" contenteditable="false">{{Purpose}}</span> को लागि यो सिफारिस प्रदान गरिएको छ। निजको जन्म मिति <span style="background-color: #e9ecef; border: 1px solid #ced4da; padding: 0 4px; border-radius: 3px;" contenteditable="false">{{citizen.dob}}</span> रहेको व्यहोरा अनुरोध छ।
+            </p>
+        </div>`;
+                  document.getElementById('customEditor').innerHTML = sampleHtml;
+              }
+
+              document.getElementById('templateForm').addEventListener('submit', function(e) {
+                  const editor = document.getElementById('customEditor');
+
+                  const clone = editor.cloneNode(true);
+                  const spans = clone.querySelectorAll('span[contenteditable="false"]');
+                  spans.forEach(span => {
+                      const textNode = document.createTextNode(span.innerText);
+                      span.parentNode.replaceChild(textNode, span);
+                  });
+
+                  const rawHtml = clone.innerHTML;
+                  document.getElementById('htmlContentHidden').value = rawHtml;
+
+                  const regex = /\{\{([a-zA-Z0-9_\.]+)\}\}/g;
+                  let match;
+                  const fields = [];
+                  const addedNames = new Set();
+
+                  while ((match = regex.exec(rawHtml)) !== null) {
+                      const key = match[1];
+                      if (!addedNames.has(key)) {
+                          addedNames.add(key);
+
+                          let parts = key.split('.');
+                          let nameProp = parts[parts.length - 1];
+                          let label = nameProp.charAt(0).toUpperCase() + nameProp.slice(1).replace(/([A-Z])/g, ' $1').trim();
+
+                          let fieldDef = {
+                              name: key,
+                              label: label,
+                              type: key.toLowerCase().includes('dob') || key.toLowerCase().includes('date') ? "date" : "text"
+                          };
+
+                          if (key.startsWith('citizen.')) {
+                              fieldDef.autoFillKey = key;
+                          }
+
+                          fields.push(fieldDef);
+                      }
+                  }
+
+                  document.getElementById('formSchemaJsonHidden').value = JSON.stringify({ fields: fields });
+              });
+    </script>
+}

@@ -1,0 +1,485 @@
+@model Web.ViewModels.EkycViewModel
+@{
+    ViewData["Title"] = "Digital e-KYC Enrollment";
+    ViewData["FullWidth"] = true;
+}
+
+<div class="container py-5">
+    <div class="text-center mb-5 border-bottom border-dark pb-4">
+        <h1 class="display-4 fw-bold tech-font text-indigo text-uppercase mb-3"><i class="bi bi-person-bounding-box me-3"></i>Identity Verification</h1>
+        <p class="lead text-muted fw-bold">Complete your digital e-KYC to access Civic Registry features.</p>
+    </div>
+
+    <form asp-action="Submit" method="post" enctype="multipart/form-data" id="ekycForm">
+        <div class="row g-4 justify-content-center">
+
+            <div class="col-lg-8">
+                <div class="card border-dark rounded-0 shadow-sm mb-4">
+                    <div class="card-header bg-dark text-white rounded-0 py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold mb-0"><i class="bi bi-camera me-2"></i>Live Selfie & Liveness Anchor</h5>
+                        <span id="livenessStatusBadge" class="badge bg-secondary rounded-0">Pending</span>
+                    </div>
+                    <div class="card-body p-4 bg-light text-center">
+                        <!-- Selfie Container Target -->
+                        <div id="selfieContainer" class="bg-black border border-dark position-relative overflow-hidden mx-auto mb-3" style="width: 100%; max-width: 400px; aspect-ratio: 4/3;">
+                            <video id="selfieVideo" autoplay playsinline muted class="w-100 h-100 object-fit-cover d-none"></video>
+                            <img id="selfiePreview" class="w-100 h-100 object-fit-cover position-absolute top-0 start-0 d-none" />
+
+                            <div id="livenessOverlay" class="position-absolute bottom-0 w-100 bg-dark bg-opacity-75 text-white p-3 fw-bold" style="display:none;">
+                                <span id="livenessInstruction" class="fs-5">Initializing Liveness Check...</span>
+                            </div>
+                        </div>
+
+                        <button type="button" id="startLivenessBtn" class="btn btn-primary fw-bold rounded-0 px-4"><i class="bi bi-person-check-fill me-2"></i>Start Liveness Check</button>
+                        <button type="button" id="captureBtn" class="btn btn-success fw-bold rounded-0 px-4 d-none"><i class="bi bi-camera-fill me-2"></i>Capture Photo</button>
+                        <button type="button" id="retakeBtn" class="btn btn-warning fw-bold rounded-0 px-4 d-none"><i class="bi bi-arrow-counterclockwise me-2"></i>Retake Sequence</button>
+
+                        <input type="file" id="liveSelfieFile" name="LiveSelfie" class="d-none" accept="image/*" />
+                        <span asp-validation-for="LiveSelfie" class="text-danger small d-block mt-2"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- This section is dynamically revealed only after liveness succeeds -->
+            <div id="documentSection" class="col-12 d-none">
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <div class="card border-dark rounded-0 shadow-sm h-100" id="identityDetailsCard">
+                            <div class="card-header bg-dark text-white rounded-0 py-3">
+                                <h5 class="fw-bold mb-0"><i class="bi bi-card-text me-2"></i>Identity Details</h5>
+                            </div>
+                            <div class="card-body p-4 bg-light">
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold">Document Type</label>
+                                    <select asp-for="DocumentType" id="DocumentType" class="form-select border-dark rounded-0" asp-items="Html.GetEnumSelectList<Domain.Enums.IdentityDocumentType>()" required>
+                                        <option value="">-- Select Type --</option>
+                                    </select>
+                                    <span asp-validation-for="DocumentType" class="text-danger small"></span>
+                                </div>
+
+                                <div id="dynamicInputsContainer" class="d-none">
+                                    <div class="mb-4">
+                                        <label class="form-label fw-bold">Document Number</label>
+                                        <input asp-for="DocumentNumber" id="documentNumber" class="form-control border-dark rounded-0 fw-bold" placeholder="e.g. 12-01-79-12345" required />
+                                        <span asp-validation-for="DocumentNumber" class="text-danger small"></span>
+                                    </div>
+
+                                    <div class="row g-3 mb-4">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Issue Date</label>
+                                            <input type="date" asp-for="IssueDate" class="form-control border-dark rounded-0" required />
+                                            <span asp-validation-for="IssueDate" class="text-danger small"></span>
+                                        </div>
+                                        <div class="col-md-6" id="issueDistrictContainer">
+                                            <label class="form-label fw-bold">Issue District</label>
+                                            <select asp-for="IssueDistrictId" class="form-select border-dark rounded-0" asp-items="@ViewBag.Districts" name="IssueDistrictId">
+                                                <option value="">-- Select District --</option>
+                                            </select>
+                                            <span asp-validation-for="IssueDistrictId" class="text-danger small"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="alert alert-warning border-dark rounded-0 shadow-sm small fw-bold mt-4 mb-0">
+                                        <i class="bi bi-shield-lock-fill me-2"></i> All uploads undergo deep-learning structural verification against the document and live selfie.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-6">
+                        <div class="card border-dark rounded-0 shadow-sm d-none" id="documentScanCard">
+                            <div class="card-header bg-dark text-white rounded-0 py-3">
+                                <h5 class="fw-bold mb-0"><i class="bi bi-file-earmark-person me-2"></i>Document Scan</h5>
+                            </div>
+                            <div class="card-body p-4 bg-light text-start">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Upload Document Front</label>
+                                    <input type="file" id="documentFrontFile" name="DocumentFront" class="form-control border-dark rounded-0 mb-1" accept="image/*" required />
+                                    <span asp-validation-for="DocumentFront" class="text-danger small d-block"></span>
+                                </div>
+
+                                <div class="mb-3" id="documentBackContainer">
+                                    <label class="form-label fw-bold">Upload Document Back</label>
+                                    <input type="file" id="documentBackFile" name="DocumentBack" class="form-control border-dark rounded-0 mb-1" accept="image/*" />
+                                    <span asp-validation-for="DocumentBack" class="text-danger small d-block"></span>
+                                </div>
+
+                                <div id="ocrStatus" class="alert alert-info small fw-bold d-none rounded-0 border-dark shadow-sm mt-3">
+                                    <span class="spinner-border spinner-border-sm me-2"></span>Extracting details via AI...
+                                </div>
+
+                                <button type="submit" id="submitEkycBtn" class="btn btn-success btn-lg w-100 fw-bold rounded-0 shadow-sm mt-3 border border-dark" disabled>
+                                    <i class="bi bi-check2-all me-2"></i> Submit Verification
+                                </button>
+                                <div id="submitWarning" class="text-danger small fw-bold text-center mt-2 d-none">
+                                    Please complete liveness verification to submit.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const video = document.getElementById('selfieVideo');
+            const preview = document.getElementById('selfiePreview');
+            const captureBtn = document.getElementById('captureBtn');
+            const retakeBtn = document.getElementById('retakeBtn');
+            const startLivenessBtn = document.getElementById('startLivenessBtn');
+            const livenessOverlay = document.getElementById('livenessOverlay');
+            const livenessInstruction = document.getElementById('livenessInstruction');
+            const livenessStatusBadge = document.getElementById('livenessStatusBadge');
+            const fileInput = document.getElementById('liveSelfieFile');
+            const submitEkycBtn = document.getElementById('submitEkycBtn');
+            const submitWarning = document.getElementById('submitWarning');
+            const documentSection = document.getElementById('documentSection');
+            const selfieContainer = document.getElementById('selfieContainer');
+
+            const docInput = document.getElementById('documentFrontFile');
+            const docBackInput = document.getElementById('documentBackFile');
+            const docTypeSelect = document.getElementById('DocumentType');
+            const dynamicInputs = document.getElementById('dynamicInputsContainer');
+            const scanCard = document.getElementById('documentScanCard');
+            const docBackContainer = document.getElementById('documentBackContainer');
+            const docNumInput = document.getElementById('documentNumber');
+            const ocrStatus = document.getElementById('ocrStatus');
+            const districtContainer = document.getElementById('issueDistrictContainer');
+            const issueDistrictSelect = document.querySelector('[name="IssueDistrictId"]');
+
+            let stream = null;
+            let livenessInterval = null;
+            let currentSequence = [];
+            let currentActionIndex = 0;
+            let isVerifying = false;
+            let livenessSessionActive = false;
+            let successTimeoutId = null;
+
+            // Wait ~2 full seconds of perfect staring to avoid rapid blur/motion capture
+            let consecutiveStraightFrames = 0;
+            const REQUIRED_STRAIGHT_FRAMES = 6;
+
+            const livenessActions = ['blink', 'turn_head', 'open_mouth', 'raise_eyebrows', 'look_up', 'look_down'];
+            const actionMessages = {
+                'blink': 'Please BLINK your eyes',
+                'turn_head': 'Turn your head to EITHER SIDE',
+                'open_mouth': 'Open your MOUTH wide',
+                'raise_eyebrows': 'RAISE your eyebrows',
+                'look_up': 'Look UP slightly',
+                'look_down': 'Look DOWN slightly',
+                'look_straight': 'Look STRAIGHT perfectly into the camera'
+            };
+
+            function generateSequence() {
+                const shuffled = livenessActions.sort(() => 0.5 - Math.random());
+                return [...shuffled.slice(0, 3), 'look_straight'];
+            }
+
+            function stopCamera() {
+                if (stream) {
+                    stream.getTracks().forEach(t => t.stop());
+                    stream = null;
+                }
+                video.srcObject = null;
+                video.classList.add('d-none');
+            }
+
+            startLivenessBtn.addEventListener('click', async () => {
+                if (livenessSessionActive) return;
+                if (successTimeoutId) clearTimeout(successTimeoutId);
+
+                livenessSessionActive = true;
+                startLivenessBtn.classList.add('d-none');
+                video.classList.remove('d-none');
+                livenessOverlay.style.display = 'block';
+                livenessStatusBadge.className = 'badge bg-warning rounded-0 text-dark';
+                livenessStatusBadge.innerText = 'Verifying...';
+
+                currentSequence = generateSequence();
+                currentActionIndex = 0;
+                consecutiveStraightFrames = 0;
+                isVerifying = false;
+
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                    video.srcObject = stream;
+                    setTimeout(promptNextAction, 1000);
+                } catch (err) {
+                    alert('Camera access is required for live verification.');
+                    console.error(err);
+                    livenessSessionActive = false;
+                    startLivenessBtn.classList.remove('d-none');
+                    livenessOverlay.style.display = 'none';
+                    video.classList.add('d-none');
+                }
+            });
+
+            function promptNextAction() {
+                if (!livenessSessionActive) return;
+                if (currentActionIndex < currentSequence.length) {
+                    const action = currentSequence[currentActionIndex];
+                    livenessInstruction.innerHTML = `<span class="spinner-grow spinner-grow-sm me-2 text-warning"></span> ${actionMessages[action]}`;
+
+                    if (livenessInterval) clearInterval(livenessInterval);
+                    livenessInterval = setInterval(() => verifyAction(action), 350);
+                }
+            }
+
+            async function verifyAction(action) {
+                if (isVerifying || !livenessSessionActive) return;
+                isVerifying = true;
+
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+
+                if (canvas.width === 0 || canvas.height === 0) {
+                     isVerifying = false;
+                     return;
+                }
+
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+                canvas.toBlob(async (blob) => {
+                    if (!livenessSessionActive) {
+                        isVerifying = false;
+                        return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('frame', blob, 'frame.jpg');
+                    formData.append('action', action);
+
+                    try {
+                        const response = await fetch('/Ekyc/VerifyAction', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        if (!livenessSessionActive) { isVerifying = false; return; }
+                        const data = await response.json();
+                        if (!livenessSessionActive) { isVerifying = false; return; }
+
+                        if (data.verified) {
+                            if (action === 'look_straight') {
+                                consecutiveStraightFrames++;
+                                livenessInstruction.innerHTML = `<span class="spinner-grow spinner-grow-sm me-2 text-warning"></span> Scanning face structure... Hold completely still (${consecutiveStraightFrames}/${REQUIRED_STRAIGHT_FRAMES})`;
+
+                                if (consecutiveStraightFrames >= REQUIRED_STRAIGHT_FRAMES) {
+                                    clearInterval(livenessInterval);
+                                    // Take the final snapshot on the 6th frame to guarantee total stillness
+                                    executeCaptureWithExactFrame(dataUrl, blob);
+                                } else {
+                                    isVerifying = false;
+                                }
+                            } else {
+                                clearInterval(livenessInterval);
+                                currentActionIndex++;
+                                isVerifying = false;
+                                promptNextAction();
+                            }
+                        } else {
+                            if (action === 'look_straight') {
+                                // Reset wait frames on fail to enforce strict continuous staring
+                                consecutiveStraightFrames = 0;
+                                livenessInstruction.innerHTML = `<span class="spinner-grow spinner-grow-sm me-2 text-warning"></span> Please look straight perfectly into the camera`;
+                            }
+                            isVerifying = false;
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        isVerifying = false;
+                    }
+                }, 'image/jpeg', 0.8);
+            }
+
+            function executeCaptureWithExactFrame(dataUrl, blob) {
+                // Flash effect for simulated camera shutter
+                const flash = document.createElement('div');
+                flash.className = 'position-absolute top-0 start-0 w-100 h-100 bg-white';
+                flash.style.zIndex = '9999';
+                flash.style.opacity = '1';
+                flash.style.transition = 'opacity 0.4s ease-out';
+                selfieContainer.appendChild(flash);
+
+                setTimeout(() => {
+                    flash.style.opacity = '0';
+                    setTimeout(() => flash.remove(), 400);
+                }, 50);
+
+                livenessSessionActive = false;
+                preview.src = dataUrl;
+                preview.classList.remove('d-none');
+                captureBtn.classList.add('d-none');
+                retakeBtn.classList.remove('d-none');
+
+                const file = new File([blob], "live_selfie.jpg", { type: "image/jpeg" });
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                fileInput.files = dataTransfer.files;
+
+                submitEkycBtn.disabled = false;
+                submitWarning.style.display = 'none';
+
+                livenessInstruction.innerHTML = '<i class="bi bi-check-circle-fill text-success me-2"></i> Snapshot Secured!';
+                livenessStatusBadge.className = 'badge bg-success rounded-0 text-white';
+                livenessStatusBadge.innerText = 'Verified';
+
+                stopCamera();
+                documentSection.classList.remove('d-none');
+
+                if (successTimeoutId) clearTimeout(successTimeoutId);
+                successTimeoutId = setTimeout(() => {
+                    livenessOverlay.style.display = 'none';
+                }, 1500);
+
+                isVerifying = false;
+            }
+
+            retakeBtn.addEventListener('click', () => {
+                documentSection.classList.add('d-none');
+                if (successTimeoutId) clearTimeout(successTimeoutId);
+
+                livenessSessionActive = false;
+                preview.classList.add('d-none');
+                startLivenessBtn.classList.remove('d-none');
+                retakeBtn.classList.add('d-none');
+                fileInput.value = '';
+
+                submitEkycBtn.disabled = true;
+                livenessOverlay.style.display = 'none';
+
+                livenessStatusBadge.className = 'badge bg-secondary rounded-0 text-white';
+                livenessStatusBadge.innerText = 'Pending';
+                livenessInstruction.innerHTML = 'Initializing Liveness Check...';
+
+                if (livenessInterval) clearInterval(livenessInterval);
+                isVerifying = false;
+                consecutiveStraightFrames = 0;
+            });
+
+            docTypeSelect.addEventListener('change', () => {
+                const type = docTypeSelect.value;
+                if (!type) {
+                    dynamicInputs.classList.add('d-none');
+                    scanCard.classList.add('d-none');
+                    return;
+                }
+
+                dynamicInputs.classList.remove('d-none');
+                scanCard.classList.remove('d-none');
+
+                if(type == '1') { // 1 = Citizenship
+                    docBackContainer.classList.remove('d-none');
+                    docBackInput.required = true;
+                    districtContainer.classList.remove('d-none');
+                    issueDistrictSelect.required = true;
+                } else if (type == '3') { // 3 = National ID
+                    docBackContainer.classList.add('d-none');
+                    docBackInput.required = false;
+                    docBackInput.value = '';
+                    districtContainer.classList.add('d-none');
+                    issueDistrictSelect.required = false;
+                    issueDistrictSelect.value = '';
+                } else { // 2 = Birth Certificate
+                    docBackContainer.classList.add('d-none');
+                    docBackInput.required = false;
+                    docBackInput.value = '';
+                    districtContainer.classList.remove('d-none');
+                    issueDistrictSelect.required = true;
+                }
+            });
+
+            docTypeSelect.dispatchEvent(new Event('change'));
+
+            async function triggerOcr(fileInput, side) {
+                if (!fileInput.files.length) return;
+                const formData = new FormData();
+                formData.append('document', fileInput.files[0]);
+                formData.append('side', side);
+
+                ocrStatus.classList.remove('d-none');
+                ocrStatus.className = 'alert alert-info small fw-bold rounded-0 border-dark shadow-sm mt-3';
+                ocrStatus.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Extracting details via AI... This may take a moment.';
+
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+                try {
+                    const response = await fetch('/Ekyc/ExtractOcr', { method: 'POST', body: formData, signal: controller.signal });
+                    clearTimeout(timeoutId);
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.Error) {
+                            ocrStatus.className = 'alert alert-warning small fw-bold rounded-0 border-dark shadow-sm mt-3';
+                            ocrStatus.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i>' + data.Error;
+                            fileInput.value = '';
+                            docNumInput.value = '';
+                            setTimeout(() => ocrStatus.classList.add('d-none'), 8000);
+                            return;
+                        }
+                        if (data.DocumentNumber) {
+                            docNumInput.value = data.DocumentNumber;
+                            docNumInput.classList.add('is-valid');
+                        }
+                        if (data.District) {
+                            const distText = data.District.toLowerCase();
+                            for (let i = 0; i < issueDistrictSelect.options.length; i++) {
+                                if (issueDistrictSelect.options[i].text.toLowerCase().includes(distText)) {
+                                    issueDistrictSelect.selectedIndex = i;
+                                    break;
+                                }
+                            }
+                        }
+                        ocrStatus.className = 'alert alert-success small fw-bold rounded-0 border-dark shadow-sm mt-3';
+                        ocrStatus.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>Document scanned successfully.';
+                        setTimeout(() => ocrStatus.classList.add('d-none'), 4000);
+                    } else {
+                        ocrStatus.className = 'alert alert-warning small fw-bold rounded-0 border-dark shadow-sm mt-3';
+                        ocrStatus.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i>OCR extraction returned an error. You can still fill in the details manually.';
+                        setTimeout(() => ocrStatus.classList.add('d-none'), 6000);
+                    }
+                } catch (err) {
+                    clearTimeout(timeoutId);
+                    console.error('OCR Error:', err);
+                    ocrStatus.className = 'alert alert-warning small fw-bold rounded-0 border-dark shadow-sm mt-3';
+                    if (err.name === 'AbortError') {
+                        ocrStatus.innerHTML = '<i class="bi bi-clock-fill me-2"></i>OCR extraction timed out. Please fill in the document details manually.';
+                    } else {
+                        ocrStatus.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i>Could not extract document details automatically. Please fill in the details manually.';
+                    }
+                    setTimeout(() => ocrStatus.classList.add('d-none'), 8000);
+                }
+            }
+
+            docInput.addEventListener('change', () => {
+                const type = docTypeSelect.value;
+                if (type == '2' || type == '3') {
+                    triggerOcr(docInput, 'front');
+                }
+            });
+
+            docBackInput.addEventListener('change', () => {
+                const type = docTypeSelect.value;
+                if (type == '1') {
+                    triggerOcr(docBackInput, 'back');
+                }
+            });
+
+            window.addEventListener('beforeunload', () => {
+                stopCamera();
+                if (livenessInterval) clearInterval(livenessInterval);
+                if (successTimeoutId) clearTimeout(successTimeoutId);
+            });
+        });
+    </script>
+}

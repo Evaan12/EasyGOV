@@ -1,0 +1,166 @@
+@model Web.ViewModels.Users.UserManagementViewModel
+@{
+    ViewData["Title"] = "Advanced User Management";
+}
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4 bg-dark text-white rounded-4">
+                <h4 class="fw-bold mb-3"><i class="bi bi-search me-2 text-warning"></i>Find User Profile</h4>
+                <div class="position-relative">
+                    <input type="text" id="userSearchInput" class="form-control form-control-lg border-0 shadow-none" placeholder="Start typing user name or email (min 3 chars)..." autocomplete="off" />
+                    
+                    <ul id="userSearchResults" class="list-group position-absolute w-100 shadow-lg mt-1" style="z-index: 1050; display: none; max-height: 250px; overflow-y: auto;">
+                        <!-- Results dynamically injected here -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="actionCards" style="display: none;">
+    <div class="alert alert-info border-0 shadow-sm d-flex align-items-center rounded-3 mb-4">
+        <i class="bi bi-person-bounding-box fs-3 me-3 text-primary"></i>
+        <div>
+            <h5 class="fw-bold mb-0 text-dark" id="selectedUserName">Loading...</h5>
+            <span class="text-muted small" id="selectedUserEmail"></span>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- SUSPEND WIDGET -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100 border-top border-4 border-warning">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold text-dark"><i class="bi bi-pause-circle text-warning me-2"></i>Suspend User</h5>
+                    <p class="text-muted small">Temporarily disable account access for a designated block of time.</p>
+                    
+                    <form asp-action="Suspend" method="post">
+                        <input type="hidden" asp-for="SelectedUserId" class="sync-user-id" />
+                        <div class="input-group mb-3">
+                            <input asp-for="SuspendDurationHours" class="form-control" type="number" min="1" max="720" required />
+                            <span class="input-group-text bg-light text-muted">Hours</span>
+                        </div>
+                        <button type="submit" class="btn btn-warning w-100 fw-bold shadow-sm">Issue Suspension</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- BAN WIDGET -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100 border-top border-4 border-danger">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold text-dark"><i class="bi bi-slash-circle text-danger me-2"></i>Permanent Ban</h5>
+                    <p class="text-muted small">Permanently lock this user out of the platform entirely.</p>
+                    
+                    <form asp-action="Ban" method="post">
+                        <input type="hidden" asp-for="SelectedUserId" class="sync-user-id" />
+                        <div class="mb-3">
+                            <input asp-for="BanReason" class="form-control" placeholder="Reason for ban..." required />
+                        </div>
+                        <button type="submit" class="btn btn-danger w-100 fw-bold shadow-sm" onclick="return confirm('WARNING: Are you sure you wish to ban this user permanently?');">Enact Ban</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ASSIGN ROLE WIDGET -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100 border-top border-4 border-success">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold text-dark"><i class="bi bi-person-badge text-success me-2"></i>Assign Security Role</h5>
+                    <p class="text-muted small">Elevate or shift the target user's security permissions within the tenant.</p>
+                    
+                    <form asp-action="AssignRole" method="post">
+                        <input type="hidden" asp-for="SelectedUserId" class="sync-user-id" />
+                        <div class="mb-3">
+                            <select asp-for="SelectedRoleId" asp-items="Model.AvailableRoles" class="form-select" required>
+                                <option value="">-- Select Role Target --</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100 fw-bold shadow-sm">Assign Profile</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const searchInput = document.getElementById('userSearchInput');
+            const searchResults = document.getElementById('userSearchResults');
+            const actionCards = document.getElementById('actionCards');
+            
+            const labelName = document.getElementById('selectedUserName');
+            const labelEmail = document.getElementById('selectedUserEmail');
+            const syncIdInputs = document.querySelectorAll('.sync-user-id');
+
+            let timeoutId;
+
+            // Debounced AJAX Execution
+            searchInput.addEventListener('input', function (e) {
+                clearTimeout(timeoutId);
+                const query = e.target.value.trim();
+                
+                if (query.length < 3) {
+                    searchResults.style.display = 'none';
+                    return;
+                }
+
+                timeoutId = setTimeout(() => {
+                    fetch(`/api/users/search?term=${encodeURIComponent(query)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            searchResults.innerHTML = '';
+                            if (data && data.length > 0) {
+                                data.forEach(user => {
+                                    const li = document.createElement('li');
+                                    li.className = 'list-group-item list-group-item-action cursor-pointer d-flex justify-content-between align-items-center';
+                                    li.innerHTML = `<div><strong class="text-dark">${user.fullName}</strong><br/><small class="text-muted">${user.email}</small></div><i class="bi bi-chevron-right text-muted"></i>`;
+                                    
+                                    // Row Click Selector
+                                    li.addEventListener('click', () => {
+                                        // Update UI
+                                        labelName.textContent = user.fullName;
+                                        labelEmail.textContent = user.email;
+                                        searchInput.value = user.fullName;
+                                        
+                                        // Sink ID to all forms
+                                        syncIdInputs.forEach(input => input.value = user.id);
+                                        
+                                        // Show panels, hide results
+                                        actionCards.style.display = 'block';
+                                        searchResults.style.display = 'none';
+                                    });
+
+                                    searchResults.appendChild(li);
+                                });
+                                searchResults.style.display = 'block';
+                            } else {
+                                searchResults.innerHTML = '<li class="list-group-item text-muted text-center py-3">No users found.</li>';
+                                searchResults.style.display = 'block';
+                            }
+                        })
+                        .catch(err => console.error("API Failure executing user search:", err));
+                }, 300); // 300ms Native Debounce
+            });
+
+            // Close dropdown if clicked outside
+            document.addEventListener('click', function(e) {
+                if(!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                    searchResults.style.display = 'none';
+                }
+            });
+        });
+    </script>
+    <style>
+        .cursor-pointer { cursor: pointer; }
+        .list-group-item-action:hover { background-color: #f8f9fa; border-left: 4px solid #0d6efd; }
+    </style>
+}

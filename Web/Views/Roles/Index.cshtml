@@ -1,0 +1,79 @@
+@model Web.ViewModels.Roles.RoleIndexViewModel
+@{
+    ViewData["Title"] = "Role Management";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold mb-0 text-dark"><i class="bi bi-shield-lock me-2"></i>Roles & Security</h3>
+    <a asp-action="Create" class="btn btn-primary fw-bold shadow-sm"><i class="bi bi-plus-lg me-1"></i> New Role</a>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <div class="card-body bg-light border-bottom p-3">
+        <form method="get" class="row g-2">
+            <div class="col-md-4">
+                <input asp-for="SearchTerm" class="form-control" placeholder="Search by role name..." />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-secondary w-100"><i class="bi bi-search me-1"></i> Filter</button>
+            </div>
+        </form>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light text-muted small text-uppercase">
+                <tr>
+                    <th class="px-4 py-3">Role Name</th>
+                    <th class="px-4 py-3">Scope / Tier</th>
+                    <th class="px-4 py-3 text-end">Manage Configurations</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Roles)
+                {
+                    <tr>
+                        <td class="px-4 py-3 fw-bold text-dark">@item.Name</td>
+                        <td class="px-4 py-3">
+                            @if (item.IsGlobal)
+                            {
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success rounded-pill px-3">Global / Template</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill px-3">Local Tenant</span>
+                            }
+                            @if (item.TenantType.HasValue)
+                            {
+                                <span class="badge bg-secondary ms-1">@item.TenantType.ToString()</span>
+                            }
+                        </td>
+                        <td class="px-4 py-3 text-end">
+                            @if (!item.IsDefault)
+                            {
+                                <a asp-action="ManagePermissions" asp-route-id="@item.Id" class="btn btn-sm btn-outline-dark fw-semibold shadow-sm">
+                                    <i class="bi bi-sliders me-1"></i> Permissions
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">System Default</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Roles.Any())
+                {
+                    <tr><td colspan="3" class="text-center text-muted py-4">No roles found matching the criteria.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    
+    @if(Model.Pagination.TotalPages > 1)
+    {
+        <div class="card-footer bg-white pt-3 border-top-0">
+            <pager paged-result="Model.Pagination"></pager>
+        </div>
+    }
+</div>

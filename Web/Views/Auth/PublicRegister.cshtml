@@ -1,0 +1,67 @@
+@model Web.ViewModels.Auth.RegisterViewModel
+@{
+    ViewData["Title"] = "Public Registration";
+    Layout = "_Layout";
+    ViewData["FullWidth"] = true;
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-lg border-dark rounded-0 border-top border-5 border-success">
+                <div class="card-header bg-dark text-white rounded-0 py-4 text-center">
+                    <i class="bi bi-person-plus-fill display-4 mb-2 d-block text-success"></i>
+                    <h3 class="fw-bold mb-0 tech-font">CITIZEN ENROLLMENT</h3>
+                    <p class="mb-0 text-white-50 small fw-bold">Secure Local Ward Node Gateway</p>
+                </div>
+                <div class="card-body p-4 p-md-5 bg-light">
+                    <form asp-action="PublicRegister" asp-route-registrationId="@Model.RegistrationId" method="post">
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger border-dark rounded-0 shadow-sm small fw-bold mb-4"></div>
+                        
+                        <input type="hidden" asp-for="RegistrationId" />
+
+                        <div class="mb-4">
+                            <label asp-for="FullName" class="form-label fw-bold text-dark text-uppercase small">Legal Full Name</label>
+                            <input asp-for="FullName" class="form-control form-control-lg border-dark rounded-0 shadow-sm" placeholder="e.g. Ram Bahadur Thapa" required />
+                            <span asp-validation-for="FullName" class="text-danger small fw-bold mt-1 d-block"></span>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="Email" class="form-label fw-bold text-dark text-uppercase small">Email Address</label>
+                            <input asp-for="Email" class="form-control form-control-lg border-dark rounded-0 shadow-sm" placeholder="name@example.com" required />
+                            <span asp-validation-for="Email" class="text-danger small fw-bold mt-1 d-block"></span>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="PhoneNumber" class="form-label fw-bold text-dark text-uppercase small">Phone Number</label>
+                            <input asp-for="PhoneNumber" class="form-control form-control-lg border-dark rounded-0 shadow-sm" placeholder="+9779800000000" required />
+                            <div class="form-text small">Used for receiving critical disaster voice alerts.</div>
+                            <span asp-validation-for="PhoneNumber" class="text-danger small fw-bold mt-1 d-block"></span>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="Password" class="form-label fw-bold text-dark text-uppercase small">Secure Password</label>
+                            <input asp-for="Password" class="form-control form-control-lg border-dark rounded-0 shadow-sm" placeholder="Minimum 8 characters" required />
+                            <span asp-validation-for="Password" class="text-danger small fw-bold mt-1 d-block"></span>
+                        </div>
+
+                        <div class="mb-5">
+                            <label asp-for="ConfirmPassword" class="form-label fw-bold text-dark text-uppercase small">Confirm Password</label>
+                            <input asp-for="ConfirmPassword" class="form-control form-control-lg border-dark rounded-0 shadow-sm" placeholder="Verify password" required />
+                            <span asp-validation-for="ConfirmPassword" class="text-danger small fw-bold mt-1 d-block"></span>
+                        </div>
+
+                        <button type="submit" class="btn btn-success btn-lg w-100 fw-bold rounded-0 shadow-sm text-uppercase">
+                            <i class="bi bi-shield-check me-2"></i> Register Profile
+                        </button>
+
+                        <div class="text-center mt-4 border-top border-dark pt-3">
+                            <p class="small text-muted fw-bold mb-0">Already have a registered profile? <a asp-controller="Auth" asp-action="Login" class="text-dark text-decoration-none border-bottom border-dark pb-1">Sign In Instead</a></p>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

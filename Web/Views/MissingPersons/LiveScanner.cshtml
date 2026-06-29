@@ -1,0 +1,234 @@
+@{
+    ViewData["Title"] = "Live Biometric Scanner";
+    ViewData["FullWidth"] = true;
+}
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <h2 class="fw-bold text-dark tech-font text-uppercase mb-2">
+                <i class="bi bi-camera-video text-danger me-2"></i> Live Search Protocol
+            </h2>
+            <p class="text-muted fw-bold">Point your camera around the room to automatically cross-reference faces against the active missing persons database.</p>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10 col-xl-8">
+            <div class="card border-dark rounded-0 shadow-lg bg-dark">
+                <div class="card-header bg-black text-white border-bottom border-secondary rounded-0 py-3 d-flex justify-content-between align-items-center">
+                    <span id="connectionStatus" class="badge bg-secondary border border-secondary text-white rounded-0 px-3 py-2">
+                        <i class="bi bi-circle-fill me-2" style="font-size: 0.6rem;"></i> Connecting SignalR...
+                    </span>
+                    <button id="switchCameraBtn" class="btn btn-sm btn-outline-light rounded-0 fw-bold d-none">
+                        <i class="bi bi-arrow-repeat me-1"></i> Switch Camera
+                    </button>
+                </div>
+                
+                <div class="card-body p-0 position-relative bg-black d-flex justify-content-center align-items-center" style="min-height: 50vh;">
+                    
+                    <div id="startOverlay" class="text-center position-absolute w-100 h-100 d-flex flex-column justify-content-center align-items-center bg-black" style="z-index: 20;">
+                        <i class="bi bi-camera fs-1 text-white mb-3"></i>
+                        <button id="startBtn" class="btn btn-danger btn-lg rounded-0 fw-bold shadow-sm px-5" disabled>
+                            INITIALIZE SYSTEM
+                        </button>
+                        <p class="text-muted small mt-3 px-4">Camera permissions are strictly required to execute the live scanning protocol.</p>
+                    </div>
+
+                    <div class="scanner-container w-100 h-100 position-relative text-center d-none" id="videoContainer">
+                        <!-- Raw Video Feed -->
+                        <video id="videoElement" autoplay playsinline muted class="w-100 h-100" style="object-fit: cover; max-height: 75vh;"></video>
+                        
+                        <!-- Drawing Layer for Boxes -->
+                        <canvas id="overlayCanvas" class="position-absolute top-0 start-0 w-100 h-100" style="pointer-events: none; object-fit: cover;"></canvas>
+                        
+                        <!-- Animated Scan Line -->
+                        <div class="scan-line" id="scanLine"></div>
+                    </div>
+                </div>
+
+                <div class="card-footer bg-black border-top border-secondary text-center p-3">
+                    <button id="stopBtn" class="btn btn-outline-danger fw-bold rounded-0 px-4 d-none">
+                        <i class="bi bi-stop-circle-fill me-2"></i> Terminate Feed
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Canvas used strictly for capturing scaled down bandwidth-friendly frames -->
+<canvas id="captureCanvas" style="display: none;"></canvas>
+
+@section Styles {
+    <style>
+        .scanner-container { overflow: hidden; }
+        .scan-line {
+            width: 100%; height: 3px; background: rgba(220, 53, 69, 0.8);
+            position: absolute; top: 0; left: 0; z-index: 10;
+            box-shadow: 0 0 15px rgba(220, 53, 69, 1);
+            animation: scanAnim 3s linear infinite; display: none;
+        }
+        @@keyframes scanAnim { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
+    </style>
+}
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const switchCameraBtn = document.getElementById('switchCameraBtn');
+            const videoContainer = document.getElementById('videoContainer');
+            const startOverlay = document.getElementById('startOverlay');
+            const video = document.getElementById('videoElement');
+            const overlay = document.getElementById('overlayCanvas');
+            const capture = document.getElementById('captureCanvas');
+            const statusBadge = document.getElementById('connectionStatus');
+            const scanLine = document.getElementById('scanLine');
+            
+            const overlayCtx = overlay.getContext('2d');
+            const captureCtx = capture.getContext('2d');
+
+            let connection;
+            let stream = null;
+            let scanInterval;
+            let currentFacingMode = 'environment';
+            
+            // Sending frames at 640px base.
+            const TARGET_WIDTH = 640; 
+            let scaleX = 1;
+            let scaleY = 1;
+
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl("/hubs/missingPersons")
+                .withAutomaticReconnect()
+                .configureLogging(signalR.LogLevel.Warning)
+                .build();
+
+            connection.start().then(() => {
+                statusBadge.classList.replace('bg-secondary', 'bg-success');
+                statusBadge.innerHTML = '<i class="bi bi-wifi me-2"></i> Uplink Established';
+                startBtn.disabled = false;
+            }).catch(err => {
+                statusBadge.classList.replace('bg-secondary', 'bg-danger');
+                statusBadge.innerHTML = '<i class="bi bi-x-octagon-fill me-2"></i> Uplink Failed';
+                console.error(err.toString());
+            });
+
+            connection.on("ReceiveFrameResults", (results) => {
+                // Wipe previous frame bounding boxes
+                overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+                
+                if(!results || results.length === 0) return;
+
+                results.forEach(res => {
+                    // Multiply backend captured coords by the actual video native bounds
+                    const box = {
+                        x: res.box.x * scaleX,
+                        y: res.box.y * scaleY,
+                        width: res.box.width * scaleX,
+                        height: res.box.height * scaleY
+                    };
+
+                    overlayCtx.lineWidth = 5;
+                    
+                    if (res.isMatch) {
+                        overlayCtx.strokeStyle = '#198754';
+                        overlayCtx.strokeRect(box.x, box.y, box.width, box.height);
+                        
+                        overlayCtx.fillStyle = '#198754';
+                        overlayCtx.fillRect(box.x, box.y - 35, box.width, 35);
+                        
+                        overlayCtx.fillStyle = '#fff';
+                        overlayCtx.font = 'bold 20px Arial';
+                        overlayCtx.fillText(`${res.missingPersonName} (${Math.round(res.confidence * 100)}%)`, box.x + 8, box.y - 10);
+                    } else {
+                        overlayCtx.strokeStyle = 'rgba(220, 53, 69, 0.8)';
+                        overlayCtx.strokeRect(box.x, box.y, box.width, box.height);
+                        
+                        overlayCtx.fillStyle = 'rgba(220, 53, 69, 0.8)';
+                        overlayCtx.fillRect(box.x, box.y - 25, box.width, 25);
+                        
+                        overlayCtx.fillStyle = '#fff';
+                        overlayCtx.font = '14px Arial';
+                        overlayCtx.fillText('NO MATCH', box.x + 8, box.y - 8);
+                    }
+                });
+            });
+
+            const startCamera = async () => {
+                if (stream) stopCamera();
+
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { facingMode: currentFacingMode } 
+                    });
+                    video.srcObject = stream;
+
+                    video.onloadedmetadata = () => {
+                        const aspect = video.videoHeight / video.videoWidth;
+                        capture.width = TARGET_WIDTH;
+                        capture.height = TARGET_WIDTH * aspect;
+
+                        // Canvas must explicitly match the intrinsic video boundaries
+                        overlay.width = video.videoWidth;
+                        overlay.height = video.videoHeight;
+
+                        // Factor needed to scale the 640px bounding box coords back up to actual device camera bounds
+                        scaleX = video.videoWidth / capture.width;
+                        scaleY = video.videoHeight / capture.height;
+
+                        startOverlay.classList.add('d-none');
+                        videoContainer.classList.remove('d-none');
+                        stopBtn.classList.remove('d-none');
+                        switchCameraBtn.classList.remove('d-none');
+                        scanLine.style.display = 'block';
+
+                        scanInterval = setInterval(processFrame, 400); 
+                    };
+                } catch (err) {
+                    alert('Camera access denied or unavailable. Please check permissions.');
+                    console.error('Camera Error:', err);
+                }
+            };
+
+            const stopCamera = () => {
+                clearInterval(scanInterval);
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    stream = null;
+                }
+                video.srcObject = null;
+                overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+                
+                startOverlay.classList.remove('d-none');
+                videoContainer.classList.add('d-none');
+                stopBtn.classList.add('d-none');
+                switchCameraBtn.classList.add('d-none');
+                scanLine.style.display = 'none';
+            };
+
+            const processFrame = () => {
+                if (connection.state !== signalR.HubConnectionState.Connected) return;
+
+                captureCtx.drawImage(video, 0, 0, capture.width, capture.height);
+                
+                capture.toBlob(blob => {
+                    blob.arrayBuffer().then(buffer => {
+                        connection.invoke("ProcessFrame", new Uint8Array(buffer)).catch(err => console.error(err));
+                    });
+                }, 'image/jpeg', 0.85); // High quality compression
+            };
+
+            startBtn.addEventListener('click', startCamera);
+            stopBtn.addEventListener('click', stopCamera);
+            
+            switchCameraBtn.addEventListener('click', () => {
+                currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+                startCamera();
+            });
+        });
+    </script>
+}

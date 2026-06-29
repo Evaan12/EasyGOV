@@ -1,0 +1,33 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Release" />
+    <BuildType Name="x64" />
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Folder Name="/Domain/">
+    <Project Path="Domain/Domain.csproj">
+      <BuildType Solution="x64|Any CPU" Project="Release" />
+      <Platform Solution="Release|x64" Project="X64" />
+    </Project>
+  </Folder>
+  <Project Path="Application/Application.csproj">
+    <BuildDependency Project="Domain/Domain.csproj" />
+    <Platform Solution="Release|x64" Project="X64" />
+  </Project>
+  <Project Path="Infrastructure/Infrastructure.csproj">
+    <BuildDependency Project="Application/Application.csproj" />
+    <BuildDependency Project="Domain/Domain.csproj" />
+    <BuildType Solution="x64|Any CPU" Project="Release" />
+    <Platform Solution="Debug|x64" Project="x64" />
+    <Platform Solution="Release|x64" Project="x64" />
+  </Project>
+  <Project Path="Web/Web.csproj">
+    <BuildDependency Project="Application/Application.csproj" />
+    <BuildDependency Project="Domain/Domain.csproj" />
+    <BuildType Solution="x64|Any CPU" Project="Release" />
+    <Platform Solution="Debug|x64" Project="x64" />
+    <Platform Solution="Release|x64" Project="x64" />
+  </Project>
+</Solution>

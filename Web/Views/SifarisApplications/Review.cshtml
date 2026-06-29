@@ -1,0 +1,284 @@
+@model Domain.Entities.SifarisApplication
+@{
+    ViewData["Title"] = "Process Sifaris Application";
+    var profile = ViewBag.CitizenProfile as Domain.Entities.CitizenProfile;
+    var documents = ViewBag.Documents as IEnumerable<Domain.Entities.DocumentFile>;
+    var compiledHtml = ViewBag.CompiledHtml as string; // This is the compiled Nibedan HTML
+}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-dark pb-3">
+        <h3 class="fw-bold mb-0 text-dark"><i class="bi bi-file-earmark-person me-2 text-primary"></i>Process Application Request</h3>
+        <a asp-action="Index" class="btn btn-outline-dark fw-bold rounded-0"><i class="bi bi-arrow-left me-2"></i>Back</a>
+    </div>
+
+    <div class="row g-4">
+        <!-- Citizen Profile & Documents (Left Sidebar) -->
+        <div class="col-lg-4">
+            <div class="card border-dark rounded-0 shadow-sm mb-4">
+                <div class="card-header bg-dark text-white rounded-0 py-3 d-flex justify-content-between">
+                    <h5 class="fw-bold mb-0">Citizen Profile</h5>
+                    <span class="badge bg-success rounded-0">Verified</span>
+                </div>
+                <div class="card-body bg-light p-4">
+                    @if (profile != null)
+                    {
+                        <table class="table table-sm table-borderless mb-0">
+                            <tbody>
+                                <tr>
+                                    <th class="ps-0">Full Name:</th>
+                                    <td class="fw-bold text-end">@profile.FullName</td>
+                                </tr>
+                                <tr>
+                                    <th class="ps-0">Date of Birth:</th>
+                                    <td class="text-end">@profile.DateOfBirth.ToString("yyyy-MM-dd")</td>
+                                </tr>
+                                <tr>
+                                    <th class="ps-0">Phone:</th>
+                                    <td class="text-end">@(profile.MobileNumber?.Value ?? "N/A")</td>
+                                </tr>
+                                <tr>
+                                    <th class="ps-0">Citizenship No:</th>
+                                    <td class="text-end">@(profile.Citizenship?.CitizenshipNumber ?? "N/A")</td>
+                                </tr>
+                                <tr>
+                                    <th class="ps-0">NIN:</th>
+                                    <td class="text-end">@(profile.NationalId?.NinNumber ?? "N/A")</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <p class="text-danger">Profile not found.</p>
+                    }
+                </div>
+            </div>
+
+            <div class="card border-dark rounded-0 shadow-sm">
+                <div class="card-header bg-dark text-white rounded-0 py-3">
+                    <h5 class="fw-bold mb-0">Uploaded Documents</h5>
+                </div>
+                <div class="card-body bg-light p-4" style="max-height: 500px; overflow-y: auto;">
+                    @if (documents != null && documents.Any())
+                    {
+                        foreach (var doc in documents)
+                        {
+                            <div class="mb-4">
+                                <strong class="d-block mb-2 text-uppercase text-dark border-bottom border-secondary pb-1">@doc.FileType.ToString()</strong>
+                                <a href="/uploads/@System.IO.Path.GetFileName(doc.FilePath)" target="_blank">
+                                    <img src="/uploads/@System.IO.Path.GetFileName(doc.FilePath)" alt="@doc.OriginalFileName" class="img-fluid border border-dark rounded-0 shadow-sm" style="max-height: 250px; object-fit: contain; width: 100%; background: #fff;" />
+                                </a>
+                                @if (doc.AnalysisResult != null)
+                                {
+                                    <div class="mt-2 small fw-bold">
+                                        @if (doc.AnalysisResult.IsVerifiedAuthentic)
+                                        {
+                                            <span class="text-success"><i class="bi bi-check-circle-fill"></i> AI Verification: Authentic</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-danger"><i class="bi bi-exclamation-triangle-fill"></i> AI Verification: Potential Forgery (@(Math.Round(doc.AnalysisResult.ElaForgeryScore * 100))% tampered)</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted fw-bold">No documents uploaded.</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Application Review & Sifaris Generation (Main Content) -->
+        <div class="col-lg-8">
+            <div class="card border-dark rounded-0 shadow-sm h-100">
+                <div class="card-header bg-dark text-white rounded-0 py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0">Workflow: Nibedan & Sifaris</h5>
+                    <span class="badge bg-warning text-dark border border-warning rounded-0">@Model.Status</span>
+                </div>
+                <div class="card-body bg-light p-4" style="overflow-x: auto;">
+                    
+                    <ul class="nav nav-tabs border-dark mb-4" id="reviewTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active text-dark fw-bold border-dark rounded-0" id="nibedan-tab" data-bs-toggle="tab" data-bs-target="#nibedan-pane" type="button" role="tab" aria-controls="nibedan-pane" aria-selected="true">
+                                1. Review Nibedan
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link text-dark fw-bold border-dark rounded-0" id="sifaris-tab" data-bs-toggle="tab" data-bs-target="#sifaris-pane" type="button" role="tab" aria-controls="sifaris-pane" aria-selected="false">
+                                2. Prepare Final Sifaris
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="reviewTabsContent">
+                        
+                        <!-- TAB 1: Nibedan (Application) -->
+                        <div class="tab-pane fade show active" id="nibedan-pane" role="tabpanel" aria-labelledby="nibedan-tab" tabindex="0">
+                            <div class="alert alert-info rounded-0 border-dark shadow-sm small fw-bold">
+                                <i class="bi bi-file-text me-2"></i> This is the official request submitted by the citizen. Review it thoroughly before proceeding.
+                            </div>
+                            <div class="bg-white border border-dark p-4 shadow-sm" style="min-height: 400px; max-height: 600px; overflow-y: auto;">
+                                @Html.Raw(compiledHtml)
+                            </div>
+                            
+                            @if (Model.Status == Domain.Enums.ApplicationStatus.PendingReview)
+                            {
+                                <div class="mt-4 text-end">
+                                    <button type="button" class="btn btn-outline-danger fw-bold rounded-0 px-4 me-2" data-bs-toggle="modal" data-bs-target="#rejectModal">Reject Application</button>
+                                    <button type="button" class="btn btn-primary fw-bold rounded-0 px-4" onclick="document.getElementById('sifaris-tab').click();">Proceed to Prepare Sifaris <i class="bi bi-arrow-right ms-1"></i></button>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- TAB 2: Sifaris Form (Generation) -->
+                        <div class="tab-pane fade" id="sifaris-pane" role="tabpanel" aria-labelledby="sifaris-tab" tabindex="0">
+                            <div class="alert alert-warning rounded-0 border-dark shadow-sm small fw-bold">
+                                <i class="bi bi-magic me-2"></i> Prepare the final Sifaris document. Fields have been pre-filled from the citizen's application and profile where possible.
+                            </div>
+
+                            <form id="sifarisForm" onsubmit="previewSifarisForm(event)">
+                                <input type="hidden" id="sifarisTemplateId" />
+                                <div id="sifarisFormFields" class="mb-4">
+                                    <div class="text-center my-4"><span class="spinner-border text-primary"></span><p class="mt-2 fw-bold">Loading Sifaris Template...</p></div>
+                                </div>
+                                @if (Model.Status == Domain.Enums.ApplicationStatus.PendingReview)
+                                {
+                                    <div class="text-end border-top border-dark pt-3">
+                                        <button type="submit" class="btn btn-dark fw-bold rounded-0 px-5 shadow-sm">Preview Final Sifaris</button>
+                                    </div>
+                                }
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-dark rounded-0 shadow-lg">
+      <div class="modal-header bg-danger text-white border-bottom border-dark rounded-0">
+        <h5 class="modal-title fw-bold">Reject Application</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form asp-action="Reject" method="post">
+          <input type="hidden" name="applicationId" value="@Model.Id" />
+          <div class="modal-body p-4 bg-light text-start">
+              <div class="mb-3">
+                  <label class="form-label fw-bold">Rejection Reason</label>
+                  <textarea name="reviewNotes" class="form-control rounded-0 border-dark" rows="3" placeholder="Provide a clear reason for rejecting the citizen's application..." required></textarea>
+              </div>
+          </div>
+          <div class="modal-footer border-top border-dark rounded-0 bg-white">
+            <button type="button" class="btn btn-outline-dark fw-bold rounded-0" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-danger fw-bold rounded-0 border-dark">Confirm Rejection</button>
+          </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Preview Sifaris Modal -->
+<div class="modal fade" id="previewSifarisModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content border-dark rounded-0 shadow-lg">
+      <div class="modal-header bg-success text-white border-bottom border-dark rounded-0">
+        <h5 class="modal-title fw-bold"><i class="bi bi-award-fill me-2"></i>Final Sifaris Preview</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0 bg-secondary" style="overflow-x: auto;">
+          <div class="alert alert-warning border-0 rounded-0 mb-0 fw-bold text-center">
+              <i class="bi bi-info-circle me-1"></i> This is the final recommendation document that will be issued to the citizen with the Ward's official seal and tracking QR.
+          </div>
+          <div id="sifarisPreviewContainer" class="p-5 d-flex justify-content-center">
+              <div class="text-center my-5"><span class="spinner-border text-white"></span></div>
+          </div>
+      </div>
+      <div class="modal-footer border-top border-dark rounded-0 bg-white justify-content-between">
+          <button type="button" class="btn btn-outline-dark fw-bold rounded-0" data-bs-dismiss="modal">Edit Fields</button>
+          
+          <form asp-action="Approve" method="post" id="approveForm" class="m-0">
+              <input type="hidden" name="applicationId" value="@Model.Id" id="actualApplicationId" />
+              <input type="hidden" name="sifarisDataJson" id="finalSifarisDataJson" />
+              <input type="hidden" name="reviewNotes" value="Application reviewed and Sifaris generated successfully." />
+              <button type="submit" class="btn btn-success fw-bold rounded-0 shadow-sm px-4">
+                  <i class="bi bi-check-circle-fill me-1"></i> Approve & Issue Document
+              </button>
+          </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const applicationId = '@Model.Id';
+            
+            // Load the officer form template for the Sifaris
+            fetch(`/api/sifaris/officer-template/${applicationId}`)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('sifarisTemplateId').value = data.templateId;
+                    const schema = JSON.parse(data.prefilledSchemaJson);
+                    const container = document.getElementById('sifarisFormFields');
+                    container.innerHTML = `<h5 class="fw-bold mb-3 border-bottom border-dark pb-2 text-dark">${data.name}</h5>`;
+                    
+                    schema.fields.forEach(f => {
+                        container.innerHTML += `<div class="mb-3">
+                            <label class="form-label fw-bold">${f.label}</label>
+                            <input type="${f.type}" name="${f.name}" class="form-control rounded-0 border-dark" value="${f.defaultValue || ''}" required />
+                        </div>`;
+                    });
+                })
+                .catch(err => {
+                    document.getElementById('sifarisFormFields').innerHTML = `<div class="alert alert-danger fw-bold rounded-0 border-dark"><i class="bi bi-exclamation-triangle-fill me-2"></i>Failed to load Sifaris template: ${err.message}</div>`;
+                });
+        });
+
+        function previewSifarisForm(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            const dataObj = {};
+            for (let [key, val] of formData.entries()) {
+                dataObj[key] = val;
+            }
+            const jsonData = JSON.stringify(dataObj);
+            
+            // Store JSON for final submission
+            document.getElementById('finalSifarisDataJson').value = jsonData;
+            
+            const templateId = document.getElementById('sifarisTemplateId').value;
+            const applicationId = document.getElementById('actualApplicationId').value;
+            
+            // Show loading
+            document.getElementById('sifarisPreviewContainer').innerHTML = '<div class="text-center my-5"><span class="spinner-border text-white" style="width: 3rem; height: 3rem;"></span><p class="text-white mt-3 fw-bold">Compiling Sifaris...</p></div>';
+            
+            new bootstrap.Modal(document.getElementById('previewSifarisModal')).show();
+            
+            fetch(`/api/sifaris/preview?templateId=${templateId}&applicationId=${applicationId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: jsonData
+            })
+            .then(res => {
+                if(!res.ok) throw new Error("Failed to compile preview");
+                return res.text();
+            })
+            .then(html => {
+                document.getElementById('sifarisPreviewContainer').innerHTML = `<div class="bg-white border border-dark shadow" style="min-width: 800px; padding: 3rem;">${html}</div>`;
+            })
+            .catch(err => {
+                document.getElementById('sifarisPreviewContainer').innerHTML = `<div class="alert alert-danger fw-bold rounded-0 border-dark m-5"><i class="bi bi-exclamation-triangle-fill me-2"></i>${err.message}</div>`;
+            });
+        }
+    </script>
+}

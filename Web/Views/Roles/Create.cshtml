@@ -1,0 +1,49 @@
+@model Web.ViewModels.Roles.RoleFormViewModel
+@inject Application.Interfaces.ICurrentUserService CurrentUser
+@{
+    ViewData["Title"] = "Create System Role";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm mt-4 rounded-4">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                <h4 class="text-primary fw-bold mb-0">@ViewData["Title"]</h4>
+            </div>
+            <div class="card-body p-4">
+                <form asp-action="Create" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+                    
+                    <div class="mb-4">
+                        <label asp-for="Name" class="form-label fw-semibold"></label>
+                        <input asp-for="Name" class="form-control form-control-lg bg-light" placeholder="e.g. Data Entry Clerk" />
+                        <span asp-validation-for="Name" class="text-danger small"></span>
+                    </div>
+
+                    @if (CurrentUser.TenantType == Domain.Enums.TenantType.Central)
+                    {
+                        <div class="mb-4">
+                            <label asp-for="TenantType" class="form-label fw-semibold"></label>
+                            <select asp-for="TenantType" class="form-select form-select-lg bg-light" asp-items="Html.GetEnumSelectList<Domain.Enums.TenantType>()">
+                                <option value="">-- Select Target Tier --</option>
+                            </select>
+                            <span asp-validation-for="TenantType" class="text-danger small"></span>
+                            <div class="form-text text-muted">Select a tier if this role applies as a template to that level.</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <input type="hidden" asp-for="TenantType" value="@CurrentUser.TenantType" />
+                    }
+
+                    <div class="d-flex justify-content-between mt-4 border-top pt-4">
+                        <a asp-action="Index" class="btn btn-outline-secondary px-4 fw-bold">Cancel</a>
+                        <button type="submit" class="btn btn-primary px-5 fw-bold shadow-sm">Save Role</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

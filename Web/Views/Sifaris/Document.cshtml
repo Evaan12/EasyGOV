@@ -1,0 +1,57 @@
+@model Application.Features.Sifaris.Queries.SifarisDocumentResult
+@{
+    ViewData["Title"] = "Sifaris Document";
+    ViewData["FullWidth"] = true;
+}
+
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4 d-print-none border-bottom border-dark pb-3">
+        <h3 class="fw-bold mb-0 text-dark"><i class="bi bi-file-earmark-check-fill me-2 text-primary"></i>Official Recommendation Document</h3>
+        <button class="btn btn-dark rounded-0 fw-bold shadow-sm" onclick="window.print()"><i class="bi bi-printer-fill me-2"></i>Print Certificate</button>
+    </div>
+    
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card border-dark rounded-0 shadow p-4 p-md-5 bg-white position-relative" id="printableArea" style="min-height: 800px;">
+                <div class="position-absolute top-0 end-0 m-4 text-center" style="z-index: 10;">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=@Url.Action("VerifySifaris", "PublicVerification", new { id = Model.SifarisId }, Context.Request.Scheme)" alt="QR Code" class="border border-dark p-1 bg-white position-relative" style="z-index: 10;" />
+                    <p class="small text-muted mt-1 mb-0 fw-bold font-monospace" style="font-size: 0.65rem;">SCAN TO VERIFY</p>
+                    <p class="small text-muted mt-0 mb-0 font-monospace" style="font-size: 0.55rem;">ID: @Model.SifarisId.ToString().Substring(0,8)</p>
+                </div>
+                
+                <div class="mt-5 position-relative" style="z-index: 1;">
+                    @Html.Raw(Model.CompiledHtml)
+                </div>
+
+                <div class="mt-5 pt-5 w-100 d-flex justify-content-end position-relative" style="z-index: 1;">
+                    <div class="text-center" style="border-top: 1px solid #000; padding-top: 10px; width: 250px;">
+                        <h5 class="fw-bold mb-0 text-dark" style="font-family: 'Great Vibes', cursive; font-size: 2.5rem;">@Model.ApproverName</h5>
+                        <p class="text-uppercase small fw-bold mb-0">@Model.ApproverRole</p>
+                        <p class="text-muted small mb-0">Issued On: @Model.IssuedAt.ToString("MMM dd, yyyy")</p>
+                        <span class="badge bg-danger mt-2 border border-dark text-white rounded-0 px-3 py-1 d-print-none">AUTHORIZED SYSTEM ISSUER</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
+    
+    @@media print {
+        body * { visibility: hidden; }
+        #printableArea, #printableArea * { visibility: visible; }
+        #printableArea { 
+            position: absolute; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            border: none !important; 
+            box-shadow: none !important; 
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        .d-print-none { display: none !important; }
+    }
+</style>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - System Portal</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    <div class="mobile-overlay"></div>
+
+    @if (User.Identity?.IsAuthenticated == true && User.Claims.Any(c => c.Type == System.Security.Claims.ClaimTypes.Role))
+    {
+        var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+        var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+
+        <nav class="sidebar">
+            <a asp-controller="Home" asp-action="Index" class="sidebar-logo text-decoration-none">
+                <i class="bi bi-shield-check me-2"></i> SYSTEM PORTAL.
+            </a>
+            <div class="sidebar-nav">
+                <div class="nav-section">Workspace</div>
+                <a asp-controller="Home" asp-action="Index" class="sidebar-link @(currentController == "Home" ? "active" : "")">
+                    <i class="bi bi-grid-1x2"></i> Dashboard
+                </a>
+
+                <div class="nav-section">Civic Registry</div>
+                <div asp-permission="Require:CitizenProfile.Read">
+                    <a asp-controller="CitizenProfiles" asp-action="Index" class="sidebar-link @(currentController == "CitizenProfiles" ? "active" : "")">
+                        <i class="bi bi-person-vcard"></i> Citizen Profiles
+                    </a>
+                </div>
+
+                <div asp-permission="Require:Sifaris.Read">
+                    <a asp-controller="SifarisApplications" asp-action="Index" class="sidebar-link @(currentController == "SifarisApplications" ? "active" : "")">
+                        <i class="bi bi-file-earmark-check"></i> Sifaris Approvals
+                    </a>
+                </div>
+
+                <div asp-permission="Require:Gunaso.Read">
+                    <a asp-controller="Gunasos" asp-action="Index" class="sidebar-link @(currentController == "Gunasos" ? "active" : "")">
+                        <i class="bi bi-envelope-paper"></i> Grievances (Gunaso)
+                    </a>
+                </div>
+                
+                <div asp-permission="Require:Sifaris.Read">
+                    <a asp-controller="DocumentTemplates" asp-action="Index" class="sidebar-link @(currentController == "DocumentTemplates" ? "active" : "")">
+                        <i class="bi bi-file-earmark-code"></i> Sifaris Templates
+                    </a>
+                </div>
+
+                <div class="nav-section">Emergency Ops</div>
+                <div asp-permission="Require:MissingPerson.Read">
+                    <a asp-controller="MissingPersons" asp-action="Index" class="sidebar-link @(currentController == "MissingPersons" && currentAction == "Index" ? "active" : "")">
+                        <i class="bi bi-search"></i> Missing Persons
+                    </a>
+                    <a asp-controller="MissingPersons" asp-action="LiveScanner" class="sidebar-link @(currentController == "MissingPersons" && currentAction == "LiveScanner" ? "active" : "")">
+                        <i class="bi bi-camera-video"></i> Live Scanner
+                    </a>
+                </div>
+                
+                <div asp-permission="Require:AlertCampaign.Read">
+                    <a asp-controller="AlertCampaigns" asp-action="Index" class="sidebar-link @(currentController == "AlertCampaigns" ? "active" : "")">
+                        <i class="bi bi-broadcast-pin"></i> Alert Campaigns
+                    </a>
+                </div>
+
+                <div class="nav-section">Administration</div>
+                <div asp-permission="Require:DevelopmentPlan.Read">
+                    <a asp-controller="DevelopmentPlans" asp-action="Index" class="sidebar-link @(currentController == "DevelopmentPlans" ? "active" : "")">
+                        <i class="bi bi-map"></i> Development Plans
+                    </a>
+                </div>
+
+                <div asp-permission="Require:Admin.Admin">
+                    <a asp-controller="Tenants" asp-action="Index" class="sidebar-link @(currentController == "Tenants" ? "active" : "")">
+                        <i class="bi bi-diagram-3"></i> Tenant Hierarchy
+                    </a>
+                </div>
+
+                <div asp-permission="Require:User.Read">
+                    <a asp-controller="Users" asp-action="Manage" class="sidebar-link @(currentController == "Users" ? "active" : "")">
+                        <i class="bi bi-person-gear"></i> User Directory
+                    </a>
+                </div>
+
+                <div asp-permission="Require:Role.Read">
+                    <a asp-controller="Roles" asp-action="Index" class="sidebar-link @(currentController == "Roles" ? "active" : "")">
+                        <i class="bi bi-shield-lock"></i> Access Matrix
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <div class="main-wrapper">
+            <header class="top-header border-bottom border-dark">
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-outline-dark d-md-none me-3 hamburger-btn py-1 px-2"><i class="bi bi-list fs-4"></i></button>
+                    <h4 class="m-0 tech-font text-dark fw-bold">@ViewData["Title"]</h4>
+                </div>
+                
+                <div class="d-flex align-items-center gap-3">
+                    <div class="dropdown">
+                        <button class="btn btn-outline-dark dropdown-toggle fw-bold shadow-sm" type="button" id="userMenuBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle me-1 text-primary"></i> @User.Identity.Name
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-dark rounded-0 mt-2" aria-labelledby="userMenuBtn">
+                            <li><h6 class="dropdown-header fw-bold">Account Settings</h6></li>
+                            <li><a class="dropdown-item fw-semibold" asp-controller="Auth" asp-action="ChangePassword"><i class="bi bi-key me-2"></i>Change Password</a></li>
+                            <li><hr class="dropdown-divider border-dark"></li>
+                            <li>
+                                <form asp-controller="Auth" asp-action="Logout" method="post" class="m-0">
+                                    <button type="submit" class="dropdown-item text-danger fw-bold"><i class="bi bi-box-arrow-right me-2"></i>Log Out</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </header>
+
+            <main class="@(ViewData["FullWidth"] != null ? "full-width-content" : "page-content")">
+                <partial name="_AlertsPartial" />
+                @RenderBody()
+            </main>
+        </div>
+    }
+    else
+    {
+        <div class="main-wrapper public-wrapper">
+            <header class="top-header public-header d-flex justify-content-between align-items-center border-bottom border-dark" style="left: 0;">
+                <a asp-controller="Home" asp-action="Index" class="text-decoration-none d-flex align-items-center">
+                    <h3 class="m-0 tech-font fw-bold" style="color: var(--brand-indigo);"><i class="bi bi-shield-check me-2"></i> SYSTEM PORTAL.</h3>
+                </a>
+                <div class="d-flex gap-4 align-items-center fw-bold">
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <a asp-controller="Home" asp-action="Index" class="text-dark text-decoration-none d-none d-md-inline">Dashboard</a>
+                        <a asp-controller="SifarisApplications" asp-action="Index" class="text-dark text-decoration-none d-none d-md-inline">My Sifaris</a>
+                        <a asp-controller="Gunasos" asp-action="Index" asp-route-isCitizenView="true" class="text-dark text-decoration-none d-none d-md-inline">My Grievances</a>
+                        <form asp-controller="Auth" asp-action="Logout" method="post" class="m-0 d-inline">
+                            <button type="submit" class="btn btn-link text-danger text-decoration-none fw-bold p-0 m-0 border-0">Log Out</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <a asp-controller="Gunasos" asp-action="Index" class="text-dark text-decoration-none d-none d-md-inline">Public Grievances</a>
+                        <a asp-controller="MissingPersons" asp-action="PublicRegistry" class="text-dark text-decoration-none d-none d-md-inline">Missing Persons</a>
+                        <a asp-controller="Auth" asp-action="Login" class="text-dark text-decoration-none">Log In</a>
+                    }
+                </div>
+            </header>
+
+            <main class="@(ViewData["FullWidth"] != null ? "full-width-content" : "page-content px-4 px-md-5")">
+                <partial name="_AlertsPartial" />
+                @RenderBody()
+            </main>
+        </div>
+    }
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/@@studio-freight/lenis@1.0.39/dist/lenis.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

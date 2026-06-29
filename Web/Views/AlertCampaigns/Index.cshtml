@@ -1,0 +1,103 @@
+@model Application.Common.Pagination.PagedResult<Domain.Entities.AlertCampaign>
+@{
+    ViewData["Title"] = "Information & Alert Campaigns";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold mb-0 text-dark"><i class="bi bi-broadcast-pin me-2 text-primary"></i>Information & Alert Systems</h3>
+    <a asp-action="Create" class="btn btn-primary fw-bold rounded-0 shadow-sm">
+        <i class="bi bi-plus-lg me-1"></i> Draft New Campaign
+    </a>
+</div>
+
+<div class="row g-4">
+    @foreach(var campaign in Model.Items)
+    {
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-dark rounded-0 h-100 shadow-sm border-top border-5 border-primary">
+                <div class="card-header bg-dark text-white rounded-0 py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0 text-truncate" title="@campaign.Title">@campaign.Title</h5>
+                    <span class="badge bg-primary rounded-0 border border-white">@campaign.Category</span>
+                </div>
+                <div class="card-body p-4 bg-light">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="fw-bold text-muted small text-uppercase">Status:</span>
+                        <span class="badge bg-dark rounded-0 px-3">@campaign.Status.ToString()</span>
+                    </div>
+                    
+                    <p class="text-dark small border border-dark p-3 bg-white mb-3" style="display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;">
+                        <i class="bi bi-quote fs-5 text-secondary"></i> @campaign.MessageScript
+                    </p>
+
+                    @if(campaign.Status == Domain.Enums.CampaignStatus.Running)
+                    {
+                        <div class="progress rounded-0 border border-dark mb-2" style="height: 15px;">
+                            <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" role="progressbar" style="width: @campaign.ProgressPercent%"></div>
+                        </div>
+                        <p class="text-end small fw-bold mb-0">@campaign.ProgressPercent% Completed</p>
+                    }
+                </div>
+                <div class="card-footer bg-white border-top border-dark text-end p-3">
+                    @if(campaign.Status == Domain.Enums.CampaignStatus.Draft)
+                    {
+                        <button class="btn btn-warning btn-sm fw-bold rounded-0 shadow-sm" data-bs-toggle="modal" data-bs-target="#reviewModal_@campaign.Id">
+                            <i class="bi bi-shield-lock-fill me-1"></i> Authorize Protocol
+                        </button>
+                        
+                        <!-- Review Modal -->
+                        <div class="modal fade" id="reviewModal_@campaign.Id" tabindex="-1" aria-hidden="true">
+                          <div class="modal-dialog modal-dialog-centered text-start">
+                            <div class="modal-content border-dark rounded-0 shadow-lg">
+                              <div class="modal-header bg-warning text-dark border-bottom border-dark rounded-0">
+                                <h5 class="modal-title fw-bold"><i class="bi bi-shield-check me-2"></i>Authorize Campaign Dispatch</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                              </div>
+                              <form asp-action="Review" method="post">
+                                  <input type="hidden" name="campaignId" value="@campaign.Id" />
+                                  <div class="modal-body p-4 bg-light">
+                                      <p class="small text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i> Dual-Authorization limits require a separate administrator to approve this dispatch.</p>
+                                      <div class="mb-3">
+                                          <label class="form-label fw-bold">Authorization Decision</label>
+                                          <select name="decision" class="form-select rounded-0 border-dark" required>
+                                              <option value="1">APPROVE AND LAUNCH</option>
+                                              <option value="2">REJECT</option>
+                                          </select>
+                                      </div>
+                                      <div class="mb-3">
+                                          <label class="form-label fw-bold">Official Remarks</label>
+                                          <textarea name="remarks" class="form-control rounded-0 border-dark" rows="3" required></textarea>
+                                      </div>
+                                  </div>
+                                  <div class="modal-footer border-top border-dark rounded-0 bg-white">
+                                    <button type="button" class="btn btn-outline-dark fw-bold rounded-0" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-warning fw-bold rounded-0 border border-dark">Execute Target</button>
+                                  </div>
+                              </form>
+                            </div>
+                          </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <span class="text-muted small fw-bold"><i class="bi bi-clock-history me-1"></i> Locked</span>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    @if(!Model.Items.Any())
+    {
+        <div class="col-12 text-center text-muted py-5">
+            <i class="bi bi-broadcast fs-1"></i>
+            <p class="mt-2 fw-bold">No active or drafted campaigns exist in the network.</p>
+        </div>
+    }
+</div>
+
+@if(Model.TotalPages > 1)
+{
+    <div class="mt-4">
+        <pager paged-result="Model"></pager>
+    </div>
+}

@@ -1,0 +1,51 @@
+@{
+    ViewData["Title"] = "Draft Information Campaign";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card border-dark rounded-0 shadow-lg mt-4 border-top border-5 border-primary">
+            <div class="card-header bg-dark text-white rounded-0 py-3">
+                <h4 class="fw-bold mb-0 tech-font"><i class="bi bi-broadcast me-2 text-primary"></i>Information & Alert Campaign</h4>
+            </div>
+            <div class="card-body p-4 bg-light">
+                <form asp-action="Create" method="post">
+                    
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-dark text-uppercase small">Campaign Title</label>
+                        <input type="text" name="title" class="form-control form-control-lg border-dark rounded-0" placeholder="e.g. Kathmandu Valley Weather Update" required />
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark text-uppercase small">Campaign Category</label>
+                            <select name="category" class="form-select form-select-lg border-dark rounded-0" asp-items="Html.GetEnumSelectList<Domain.Enums.CampaignCategory>()" required>
+                                <option value="">-- Specify Type --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark text-uppercase small">Target Region Node</label>
+                            <select name="targetTenantId" class="form-select form-select-lg border-dark rounded-0" asp-items="@ViewBag.Tenants" required>
+                                <option value="">-- Select Target Region Node --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-dark text-uppercase small">Synthesized Message Script</label>
+                        <textarea name="messageScript" class="form-control border-dark rounded-0" rows="5" placeholder="Clear, concise information for public dissemination..." required></textarea>
+                    </div>
+
+                    <div class="alert alert-warning border-dark rounded-0 shadow-sm fw-bold small">
+                        <i class="bi bi-shield-lock-fill me-2"></i> All campaigns require secondary authorization before live propagation via TingTing SIP relays.
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a asp-action="Index" class="btn btn-outline-dark fw-bold rounded-0 px-4">Cancel</a>
+                        <button type="submit" class="btn btn-primary fw-bold rounded-0 px-5 shadow-sm">Submit Draft Protocol</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

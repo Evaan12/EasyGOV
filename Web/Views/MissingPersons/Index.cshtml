@@ -1,0 +1,141 @@
+@model IEnumerable<Domain.Entities.MissingPerson>
+@{
+    ViewData["Title"] = "Missing Persons Registry";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-dark pb-3">
+    <h3 class="fw-bold mb-0 text-dark"><i class="bi bi-search me-2 text-danger"></i>Missing Persons Tracker</h3>
+    <button class="btn btn-danger fw-bold rounded-0" data-bs-toggle="modal" data-bs-target="#reportModal">
+        <i class="bi bi-megaphone-fill me-1"></i> Report Missing
+    </button>
+</div>
+
+<div class="row g-4">
+    @foreach(var person in Model)
+    {
+        <div class="col-md-4 col-lg-3">
+            <div class="card border-dark rounded-0 h-100 shadow-sm position-relative">
+                @if(person.IsFound)
+                {
+                    <span class="position-absolute top-0 end-0 badge bg-success border border-dark rounded-0 m-2 fs-6">FOUND</span>
+                }
+                else
+                {
+                    <span class="position-absolute top-0 end-0 badge bg-danger border border-dark rounded-0 m-2 fs-6 blinking-alert">MISSING</span>
+                }
+                <div class="card-body p-4 text-center">
+                    <div class="bg-light border border-dark d-inline-flex justify-content-center align-items-center mb-3" style="width: 80px; height: 80px; border-radius: 50%;">
+                        <i class="bi bi-person-bounding-box fs-1 text-secondary"></i>
+                    </div>
+                    <h5 class="fw-bold text-uppercase mb-1">@person.FullName</h5>
+                    <p class="text-muted small">Tracking ID: @person.Id.ToString().Substring(0,8)</p>
+                    <p class="text-muted small mt-2 border-top pt-2">Notes: @(string.IsNullOrEmpty(person.Notes) ? "N/A" : person.Notes)</p>
+                </div>
+                @if(!person.IsFound)
+                {
+                    <div class="card-footer bg-white border-top border-dark p-0">
+                        <form asp-action="MarkFound" method="post" class="m-0">
+                            <input type="hidden" name="id" value="@person.Id" />
+                            <button type="submit" class="btn btn-light w-100 rounded-0 fw-bold py-3 text-success text-uppercase border-0 hover-bg-success hover-text-white transition-all">
+                                <i class="bi bi-check-circle-fill me-2"></i> Mark As Found
+                            </button>
+                        </form>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    
+    @if(!Model.Any())
+    {
+        <div class="col-12 text-center text-muted py-5">
+            <i class="bi bi-check2-circle fs-1"></i>
+            <p class="mt-2 fw-bold">No active missing person reports found.</p>
+        </div>
+    }
+</div>
+
+<!-- Modal for Reporting Missing Person using strictly registered anchors -->
+<div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-dark rounded-0 shadow-lg">
+      <div class="modal-header bg-danger text-white border-bottom border-dark rounded-0">
+        <h5 class="modal-title fw-bold" id="reportModalLabel"><i class="bi bi-exclamation-triangle-fill me-2"></i>Report Missing Citizen</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form asp-action="Report" method="post">
+          <div class="modal-body p-4 bg-light">
+              <div class="alert alert-warning border-dark rounded-0 shadow-sm fw-bold small">
+                  <i class="bi bi-info-circle-fill me-2"></i> Accurate tracking mandates the citizen must have completed e-KYC. Biometric embeddings will be securely pulled from their registry.
+              </div>
+              
+              <div class="mb-3 position-relative">
+                  <label class="form-label fw-bold">Select Registered Citizen</label>
+                  <input type="text" id="citizenSearchBox" class="form-control rounded-0 border-dark" placeholder="Start typing name or ID..." autocomplete="off" required />
+                  <input type="hidden" name="citizenId" id="citizenIdField" required />
+                  <ul id="citizenSearchResults" class="list-group position-absolute w-100 shadow-sm" style="display:none; z-index:1000; max-height:200px; overflow-y:auto;"></ul>
+              </div>
+
+              <div class="mb-3">
+                  <label class="form-label fw-bold">Contextual Notes (Optional)</label>
+                  <textarea name="notes" class="form-control rounded-0 border-dark" rows="3" placeholder="Last seen location, clothing, etc."></textarea>
+              </div>
+          </div>
+          <div class="modal-footer border-top border-dark rounded-0 bg-white">
+            <button type="button" class="btn btn-outline-dark fw-bold rounded-0" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-danger fw-bold rounded-0">Execute Search Protocol</button>
+          </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+    .blinking-alert { animation: blinker 1.5s linear infinite; }
+    @@keyframes blinker { 50% { opacity: 0; } }
+    .hover-bg-success:hover { background-color: #198754 !important; }
+    .hover-text-white:hover { color: #fff !important; }
+    .transition-all { transition: all 0.2s ease; }
+    .cursor-pointer { cursor: pointer; }
+</style>
+
+@section Scripts {
+    <script>
+        document.getElementById('citizenSearchBox').addEventListener('input', function(e) {
+            const val = e.target.value.trim();
+            const resultsBox = document.getElementById('citizenSearchResults');
+            if (val.length < 2) { resultsBox.style.display = 'none'; return; }
+
+            fetch(`/api/citizens/search-anchored?term=${encodeURIComponent(val)}`)
+                .then(res => res.json())
+                .then(data => {
+                    resultsBox.innerHTML = '';
+                    if(data.length > 0) {
+                        data.forEach(c => {
+                            const li = document.createElement('li');
+                            li.className = 'list-group-item list-group-item-action cursor-pointer rounded-0 border-dark';
+                            li.innerHTML = `<strong>${c.fullName}</strong> <small class="text-muted">(${c.citizenshipNumber})</small>`;
+                            li.onclick = () => {
+                                document.getElementById('citizenIdField').value = c.id;
+                                document.getElementById('citizenSearchBox').value = c.fullName;
+                                resultsBox.style.display = 'none';
+                            };
+                            resultsBox.appendChild(li);
+                        });
+                        resultsBox.style.display = 'block';
+                    } else {
+                        resultsBox.innerHTML = '<li class="list-group-item text-muted">No anchored citizens found</li>';
+                        resultsBox.style.display = 'block';
+                    }
+                });
+        });
+        
+        document.addEventListener('click', function(e) {
+            const searchBox = document.getElementById('citizenSearchBox');
+            const resultsBox = document.getElementById('citizenSearchResults');
+            if(!searchBox.contains(e.target) && !resultsBox.contains(e.target)) {
+                resultsBox.style.display = 'none';
+            }
+        });
+    </script>
+}

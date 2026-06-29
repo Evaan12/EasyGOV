@@ -1,0 +1,6 @@
+﻿/* Scoped isolation - Elements in here only apply directly to the layout layer if necessary */
+
+.public-wrapper {
+    background-color: var(--bg-slate);
+    min-height: 100vh;
+}

@@ -1,0 +1,173 @@
+@using Domain.Enums
+@using System.Security.Claims
+@{
+    ViewData["Title"] = "System Dashboard";
+    var tenant = ViewBag.Tenant as Application.Features.Tenants.DTOs.TenantDto;
+    var profile = ViewBag.Profile as Domain.Entities.CitizenProfile;
+}
+
+@if (profile != null)
+{
+    <div class="row mb-4 border-bottom border-dark pb-3">
+        <div class="col-12">
+            <h2 class="fw-bold text-dark tech-font"><i class="bi bi-person-badge text-primary me-2"></i> CITIZEN PORTAL</h2>
+            <p class="text-muted fw-bold mb-0">Welcome, <span class="text-primary">@profile.FullName</span></p>
+        </div>
+    </div>
+    
+    @if (profile.Status == Domain.Enums.CitizenStatus.PendingActivation)
+    {
+        <div class="alert alert-warning border-dark shadow-sm fw-bold rounded-0 mb-4 p-4">
+            <h4 class="fw-bold text-dark mb-3"><i class="bi bi-exclamation-triangle-fill me-2 text-danger fs-3 align-middle"></i> Activation Required</h4>
+            <p class="mb-0 text-muted">Your digital e-KYC is complete. Please visit your local Ward Office to enroll your physical fingerprint and fully activate your civic profile.</p>
+        </div>
+    }
+    else if (profile.Status == Domain.Enums.CitizenStatus.Active)
+    {
+        <div class="alert alert-success border-dark shadow-sm fw-bold rounded-0 mb-4 p-4">
+            <i class="bi bi-check-circle-fill me-2 text-success fs-4 align-middle"></i>
+            Your profile is fully verified and active. You now have full access to civic features.
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card border-dark rounded-0 shadow-sm border-top border-4 border-warning h-100">
+                    <div class="card-body p-4 text-center">
+                        <i class="bi bi-envelope-paper text-warning fs-1 mb-3 d-block"></i>
+                        <h5 class="fw-bold text-dark">File a Grievance</h5>
+                        <p class="text-muted small">Submit a Gunaso directly to your ward or municipality.</p>
+                        <a asp-controller="Gunasos" asp-action="Index" asp-route-isCitizenView="true" class="btn btn-warning fw-bold rounded-0 border-dark mt-2 w-100">My Grievances</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-dark rounded-0 shadow-sm border-top border-4 border-primary h-100">
+                    <div class="card-body p-4 text-center">
+                        <i class="bi bi-file-earmark-check text-primary fs-1 mb-3 d-block"></i>
+                        <h5 class="fw-bold text-dark">Sifaris Requests</h5>
+                        <p class="text-muted small">Apply for official recommendation documents.</p>
+                        <a asp-controller="SifarisApplications" asp-action="Index" class="btn btn-primary fw-bold rounded-0 border-dark mt-2 w-100">My Applications</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+else
+{
+    <div class="row mb-4 border-bottom border-dark pb-3">
+        <div class="col-12">
+            <h2 class="fw-bold text-dark tech-font"><i class="bi bi-grid-1x2-fill text-primary me-2"></i> SYSTEM DASHBOARD</h2>
+            <p class="text-muted fw-bold mb-0">Welcome back, <span class="text-primary">@User.Identity?.Name</span></p>
+        </div>
+    </div>
+
+    @if (tenant != null && tenant.TenantType == TenantType.Ward && tenant.IsActivated && !string.IsNullOrEmpty(tenant.RegistrationId) && User.Claims.Any(c => c.Type == ClaimTypes.Role))
+    {
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-dark shadow-sm rounded-0 border-top border-4 border-success">
+                    <div class="card-header bg-dark text-white rounded-0 py-3">
+                        <h5 class="fw-bold mb-0"><i class="bi bi-link-45deg me-2 text-success"></i>Ward Public Registration Link</h5>
+                    </div>
+                    <div class="card-body bg-light p-4">
+                        <p class="text-muted fw-bold mb-3">Share this link directly with citizens to allow them to securely register themselves under this active Ward.</p>
+                        <div class="input-group input-group-lg border border-dark rounded-0 shadow-sm">
+                            <span class="input-group-text bg-white border-0 text-success"><i class="bi bi-globe"></i></span>
+                            <input type="text" class="form-control border-0 fw-bold text-dark" readonly value="@Url.Action("PublicRegister", "Auth", new { registrationId = tenant.RegistrationId }, Context.Request.Scheme)" />
+                            <button class="btn btn-dark fw-bold rounded-0 px-4" onclick="navigator.clipboard.writeText(this.previousElementSibling.value); alert('Registration URL Successfully Copied to Clipboard!');"><i class="bi bi-clipboard-check me-2"></i> Copy URL</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card border-dark rounded-0 shadow-sm border-top border-4 border-primary h-100">
+                <div class="card-body p-4 text-center">
+                    <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 rounded-circle mb-3" style="width: 60px; height: 60px;">
+                        <i class="bi bi-people-fill text-primary fs-3"></i>
+                    </div>
+                    <h6 class="text-muted text-uppercase fw-bold mb-2">Registered Citizens</h6>
+                    <h3 class="fw-bold mb-0 text-dark">Active</h3>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card border-dark rounded-0 shadow-sm border-top border-4 border-warning h-100">
+                <div class="card-body p-4 text-center">
+                    <div class="d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-10 rounded-circle mb-3" style="width: 60px; height: 60px;">
+                        <i class="bi bi-file-earmark-check-fill text-warning fs-3"></i>
+                    </div>
+                    <h6 class="text-muted text-uppercase fw-bold mb-2">Sifaris Requests</h6>
+                    <h3 class="fw-bold mb-0 text-dark">Online</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-dark rounded-0 shadow-sm border-top border-4 border-danger h-100">
+                <div class="card-body p-4 text-center">
+                    <div class="d-inline-flex align-items-center justify-content-center bg-danger bg-opacity-10 rounded-circle mb-3" style="width: 60px; height: 60px;">
+                        <i class="bi bi-megaphone-fill text-danger fs-3"></i>
+                    </div>
+                    <h6 class="text-muted text-uppercase fw-bold mb-2">Alert Dispatches</h6>
+                    <h3 class="fw-bold mb-0 text-dark">Monitoring</h3>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card border-dark rounded-0 shadow-sm border-top border-4 border-success h-100">
+                <div class="card-body p-4 text-center">
+                    <div class="d-inline-flex align-items-center justify-content-center bg-success bg-opacity-10 rounded-circle mb-3" style="width: 60px; height: 60px;">
+                        <i class="bi bi-map-fill text-success fs-3"></i>
+                    </div>
+                    <h6 class="text-muted text-uppercase fw-bold mb-2">Development Plans</h6>
+                    <h3 class="fw-bold mb-0 text-dark">In Motion</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card border-dark shadow-sm rounded-0 h-100">
+                <div class="card-header bg-dark text-white rounded-0 py-3">
+                    <h6 class="mb-0 fw-bold text-uppercase"><i class="bi bi-shield-lock-fill me-2 text-warning"></i>Security Operations Protocol</h6>
+                </div>
+                <div class="card-body bg-light p-4">
+                    <div class="alert alert-dark border-dark rounded-0 shadow-sm fw-bold">
+                        <i class="bi bi-info-circle-fill me-2 text-primary"></i>
+                        Ensure adherence to Role Based Access Controls. Actions performed by Head roles are tightly monitored and tracked across central hierarchical chains to guarantee public transparency and accountability.
+                    </div>
+                    <p class="text-muted small fw-bold">All modifications to settings and system configurations log specific audit trails. Direct user mapping operates purely within your authorized organizational tier parameter.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card border-dark shadow-sm rounded-0 h-100">
+                <div class="card-header bg-dark text-white rounded-0 py-3">
+                    <h6 class="mb-0 fw-bold text-uppercase"><i class="bi bi-clock-history me-2 text-info"></i>System Metrics</h6>
+                </div>
+                <ul class="list-group list-group-flush rounded-0 border-0">
+                    <li class="list-group-item bg-white d-flex justify-content-between align-items-center border-bottom border-dark py-3 fw-bold">
+                        <span>Server Local Time</span>
+                        <span class="text-primary font-monospace">@DateTime.Now.ToString("HH:mm")</span>
+                    </li>
+                    <li class="list-group-item bg-white d-flex justify-content-between align-items-center border-bottom border-dark py-3 fw-bold">
+                        <span>Active Sessions</span>
+                        <span class="badge bg-dark rounded-0 px-3">Secure</span>
+                    </li>
+                    <li class="list-group-item bg-white d-flex justify-content-between align-items-center py-3 fw-bold">
+                        <span>Tier Access Level</span>
+                        <span class="badge bg-success rounded-0 px-3 border border-success">@(tenant?.TenantType.ToString() ?? "Central")</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+}
